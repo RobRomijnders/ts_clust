@@ -1,0 +1,7 @@
+{"num_layers": 2,
+  "hidden_size": 90,
+  "max_grad_norm": 5,
+  "batch_size": 64,
+  "learning_rate": 0.005,
+  "crd": 1,
+  "num_l": 20}
