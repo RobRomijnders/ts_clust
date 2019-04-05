@@ -6,13 +6,7 @@ Created on Tue Mar 22 10:43:29 2016
 
 """
 import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-from collections import Counter
 from tensorflow.contrib.rnn import LSTMCell
-from sklearn.manifold import TSNE
-from sklearn.decomposition import TruncatedSVD
-from itertools import product
 
 
 class Model:
@@ -30,7 +24,7 @@ class Model:
         self.batch_size = batch_size
 
         # Nodes for the input variables
-        self.input_placeholder = tf.placeholder("float", shape=[batch_size, sl], name='Input_data')
+        self.input_placeholder = tf.placeholder("float", shape=[None, sl], name='Input_data')
         self.x_exp = tf.expand_dims(self.input_placeholder, 1)
         self.keep_prob = tf.placeholder("float")
 
@@ -39,17 +33,13 @@ class Model:
             cell_enc = tf.contrib.rnn.MultiRNNCell([LSTMCell(hidden_size) for _ in range(num_layers)])
             cell_enc = tf.contrib.rnn.DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
 
-            # Initial state
-            initial_state_enc = cell_enc.zero_state(batch_size, tf.float32)
+            outputs_enc, _ = tf.nn.static_rnn(cell_enc,
+                                              inputs=tf.unstack(self.x_exp, axis=2),
+                                              dtype=tf.float32)
+            cell_output = outputs_enc[-1]  # Use the hidden state at the final time step. Therefore, index -1
 
-        # with tf.name_scope("Enc_2_lat") as scope:
             # layer for mean of z
             W_mu = tf.get_variable('W_mu', [hidden_size, num_l])
-
-            outputs_enc, _ = tf.contrib.rnn.static_rnn(cell_enc,
-                                                       inputs=tf.unstack(self.x_exp, axis=2),
-                                                       initial_state=initial_state_enc)
-            cell_output = outputs_enc[-1]  # Use only the output of the final layes. Therefore, index -1
             b_mu = tf.get_variable('b_mu', [num_l])
 
             # For all intents and purposes, self.z_mu is the Tensor containing the hidden representations
@@ -73,11 +63,10 @@ class Model:
 
             # Initial state
             initial_state_dec = tuple([(z_state, z_state)] * num_layers)
-            dec_inputs = [tf.zeros([batch_size, 1])] * sl
-            # outputs_dec, _ = tf.nn.seq2seq.rnn_decoder(dec_inputs, initial_state_dec, cell_dec)
-            outputs_dec, _ = tf.contrib.rnn.static_rnn(cell_dec,
-                                                       inputs=dec_inputs,
-                                                       initial_state=initial_state_dec)
+            dec_inputs = tf.unstack(tf.zeros_like(self.x_exp), axis=2)
+            outputs_dec, _ = tf.nn.static_rnn(cell_dec,
+                                              inputs=dec_inputs,
+                                              initial_state=initial_state_dec)
         with tf.name_scope("Out_layer"):
             params_o = 2 * crd  # Number of coordinates + variances
             W_o = tf.get_variable('W_o', [hidden_size, params_o])

@@ -20,17 +20,19 @@ import json
 # and set direc to the location of the data directory
 data_direc = 'data/UCR_datasets'
 LOG_DIR = "log_tb"  # Directory for the logging
+dataset_name = "ECG5000"
+LOG_DIR = os.path.join(LOG_DIR, dataset_name)
 
 with open('model_settings.json') as f:
     config = json.load(f)
 
 plot_every = 100  # after _plot_every_ GD steps, there's console output
-max_iterations = 1000  # maximum number of iterations
+max_iterations = 2000  # maximum number of iterations
 dropout = 0.8  # Dropout rate
 
 
 # Load the data
-X_train, X_val, y_train, y_val = open_data(data_direc)
+X_train, X_val, y_train, y_val = open_data(data_direc, dataset=dataset_name)
 
 N = X_train.shape[0]
 Nval = X_val.shape[0]
@@ -60,6 +62,9 @@ with tf.Session(graph=tf.Graph()) as sess:
     sess.run(model.init_op)
     writer = tf.summary.FileWriter(LOG_DIR, sess.graph)  # writer for Tensorboard
 
+    print(f'Default sequential loss is {0.5*np.log(2*np.pi*np.e):.2f}. '
+          f'The loss should go well below the default loss as it is learning')
+
     step = 0  # Step is a counter for filling the numpy array perf_collect
     for i in range(max_iterations):
         batch_ind = np.random.choice(N, config["batch_size"], replace=False)
@@ -72,7 +77,8 @@ with tf.Session(graph=tf.Graph()) as sess:
             loss_train_seq, lost_train_lat = result[1], result[2]
 
             # Calculate and save validation performance
-            batch_ind_val = np.random.choice(Nval, config["batch_size"], replace=False)
+            num_val = min((config["batch_size"], Nval))
+            batch_ind_val = np.random.choice(Nval, num_val, replace=False)
 
             result = sess.run([model.loss, model.loss_seq, model.loss_lat_batch, model.merged],
                               feed_dict={model.input_placeholder: X_val[batch_ind_val], model.keep_prob: 1.0})
@@ -88,7 +94,6 @@ with tf.Session(graph=tf.Graph()) as sess:
                   f"val ({loss_val:5.3f}, {loss_val_seq:5.3f}, {lost_val_lat:5.3f}) "
                   f"in order (total, seq, lat)")
             step += 1
-
 
     # Save the model
     model.saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"), step)

@@ -6,14 +6,19 @@ import numpy as np
 
 
 def extract_reps(data_dir, log_dir, conf):
+    dataset_name = "ChlorineConcentration"
+    log_dir = join(log_dir, dataset_name)
+
     # Load the data
-    X_train, X_val, y_train, y_val = open_data(data_dir)
+    # TODO (rob) use same random seed at training, otherwise we have leakage!
+    X_train, X_val, y_train, y_val = open_data(data_dir, dataset=dataset_name)
     Nval = X_val.shape[0]
 
     with tf.Session() as sess:
         # Restore the model and the placeholders
-        saver = tf.train.import_meta_graph(join(log_dir, "model.ckpt-1.meta"))
-        saver.restore(sess, join(log_dir, "model.ckpt-1"))
+        # TODO (rob) simply get the latest checkpoint here
+        saver = tf.train.import_meta_graph(join(log_dir, "model.ckpt-10.meta"))
+        saver.restore(sess, join(log_dir, "model.ckpt-10"))
 
         input_ph = tf.get_collection('input')[0]
         latent_representation_ph = tf.get_collection('latent_rep')[0]
@@ -30,10 +35,12 @@ def extract_reps(data_dir, log_dir, conf):
             start += conf["batch_size"]
 
         latent_representations = np.concatenate(latent_representations, axis=0)
-        np.save('output_rep/latent_reps.npy', latent_representations)
+        np.save(f'output_rep/latent_reps_{dataset_name}.npy', latent_representations)
 
         label = y_val[:start]
-        plot_z_run(latent_representations, label)
+        np.save(f'output_rep/latent_reps_{dataset_name}_label.npy', label)
+
+        # plot_z_run(latent_representations, label)
 
 
 if __name__ == '__main__':

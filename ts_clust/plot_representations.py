@@ -3,10 +3,13 @@ from ts_clust.util.util import plot_z_run
 
 
 def plot_reps():
-    representations = np.load('output_rep/latent_reps.npy')
+    dataset_name = 'ChlorineConcentration'
+    representations = np.load(f'output_rep/latent_reps_{dataset_name}.npy')
+    labels = np.load(f'output_rep/latent_reps_{dataset_name}_label.npy')
+
     print(representations.shape)
 
-    plot_z_run(representations)
+    plot_z_run(representations, label=labels)
 
 
 if __name__ == '__main__':
