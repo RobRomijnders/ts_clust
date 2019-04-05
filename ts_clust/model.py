@@ -49,7 +49,7 @@ class Model:
             outputs_enc, _ = tf.contrib.rnn.static_rnn(cell_enc,
                                                        inputs=tf.unstack(self.x_exp, axis=2),
                                                        initial_state=initial_state_enc)
-            cell_output = outputs_enc[-1]
+            cell_output = outputs_enc[-1]  # Use only the output of the final layes. Therefore, index -1
             b_mu = tf.get_variable('b_mu', [num_l])
 
             # For all intents and purposes, self.z_mu is the Tensor containing the hidden representations
