@@ -62,7 +62,8 @@ class Model:
             cell_dec = tf.contrib.rnn.MultiRNNCell([LSTMCell(hidden_size) for _ in range(num_layers)])
 
             # Initial state
-            initial_state_dec = tuple([(z_state, z_state)] * num_layers)
+            initial_state_dec = tuple([(z_state, z_state)] +
+                                      [(tf.zeros_like(z_state), tf.zeros_like(z_state))]* (num_layers - 1))
             dec_inputs = tf.unstack(tf.zeros_like(self.x_exp), axis=2)
             outputs_dec, _ = tf.nn.static_rnn(cell_dec,
                                               inputs=dec_inputs,
@@ -70,22 +71,25 @@ class Model:
         with tf.name_scope("Out_layer"):
             params_o = 2 * crd  # Number of coordinates + variances
             W_o = tf.get_variable('W_o', [hidden_size, params_o])
-            b_o = tf.get_variable('b_o', [params_o])
-            outputs = tf.concat(outputs_dec, axis=0)  # tensor in [sl*batch_size,hidden_size]
-            h_out = tf.nn.xw_plus_b(outputs, W_o, b_o)
-            h_mu, h_sigma_log = tf.unstack(tf.reshape(h_out, [sl, batch_size, params_o]), axis=2)
+            b_o = tf.get_variable('b_o', [params_o, 1])
+            outputs = tf.stack(outputs_dec, axis=-1)  # tensor in [batch_size, hidden_size, seq_len]
+
+            # Get the parameters for the Gaussian distro's
+            h_out = tf.einsum('ijk,jp->ipk', outputs, W_o) + b_o  # Multiply over the second dimension
+            h_mu, h_sigma_log = tf.unstack(h_out, axis=1)
             h_sigma = tf.exp(h_sigma_log)
+
+            # Calculate the log probability of the input sequence under the parametrized Gaussians
             dist = tf.contrib.distributions.Normal(h_mu, h_sigma)
-            px = dist.log_prob(tf.transpose(self.input_placeholder))
-            loss_seq = -px
-            self.loss_seq = tf.reduce_mean(loss_seq)
+            px = dist.log_prob(self.input_placeholder)
+            self.loss_seq = tf.reduce_mean(-px)
 
         with tf.name_scope("train"):
             # Use learning rte decay
             global_step = tf.Variable(0, trainable=False)
             lr = tf.train.exponential_decay(learning_rate, global_step, 1000, 0.1, staircase=False)
 
-            self.loss = self.loss_seq + self.loss_lat_batch
+            self.loss = self.loss_seq + 0.01 * self.loss_lat_batch
 
             # Route the gradients so that we can plot them on Tensorboard
             tvars = tf.trainable_variables()

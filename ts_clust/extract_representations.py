@@ -1,12 +1,12 @@
 import tensorflow as tf
 import json
-from ts_clust.util.util import open_data, plot_z_run
+from ts_clust.util.util import open_data
 from os.path import join
 import numpy as np
 
 
 def extract_reps(data_dir, log_dir, conf):
-    dataset_name = "ChlorineConcentration"
+    dataset_name = "ECG5000"
     log_dir = join(log_dir, dataset_name)
 
     # Load the data
@@ -16,9 +16,10 @@ def extract_reps(data_dir, log_dir, conf):
 
     with tf.Session() as sess:
         # Restore the model and the placeholders
-        # TODO (rob) simply get the latest checkpoint here
-        saver = tf.train.import_meta_graph(join(log_dir, "model.ckpt-10.meta"))
-        saver.restore(sess, join(log_dir, "model.ckpt-10"))
+        # TODO (rob) simply get the latest checkpoint here. Use tf.train.latest_checkpoint()
+        checkpoint_path = tf.train.latest_checkpoint(log_dir)
+        saver = tf.train.import_meta_graph(checkpoint_path + ".meta")
+        saver.restore(sess, checkpoint_path)
 
         input_ph = tf.get_collection('input')[0]
         latent_representation_ph = tf.get_collection('latent_rep')[0]
@@ -39,8 +40,6 @@ def extract_reps(data_dir, log_dir, conf):
 
         label = y_val[:start]
         np.save(f'output_rep/latent_reps_{dataset_name}_label.npy', label)
-
-        # plot_z_run(latent_representations, label)
 
 
 if __name__ == '__main__':

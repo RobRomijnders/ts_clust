@@ -1,8 +1,10 @@
 from collections import Counter
+from itertools import product
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.decomposition import TruncatedSVD
+
 
 def open_data(direc, ratio_train=0.8, dataset="ECG5000"):
     """Input:
@@ -17,6 +19,8 @@ def open_data(direc, ratio_train=0.8, dataset="ECG5000"):
     N, D = data.shape
 
     ind_cut = int(ratio_train * N)
+
+    np.random.seed(5627)
     ind = np.random.permutation(N)
     X_train, X_val, y_train, y_val = data[ind[:ind_cut], 1:], \
                                      data[ind[ind_cut:], 1:], \

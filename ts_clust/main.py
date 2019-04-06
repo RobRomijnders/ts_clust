@@ -9,8 +9,7 @@ import numpy as np
 import tensorflow as tf
 import os
 from ts_clust.model import Model
-from ts_clust.util.util import open_data, plot_data, plot_z_run, find_best_accuracy
-from sklearn.cluster import SpectralClustering
+from ts_clust.util.util import open_data, plot_data
 tf.logging.set_verbosity(tf.logging.ERROR)
 import json
 
@@ -77,8 +76,8 @@ with tf.Session(graph=tf.Graph()) as sess:
             loss_train_seq, lost_train_lat = result[1], result[2]
 
             # Calculate and save validation performance
-            num_val = min((config["batch_size"], Nval))
-            batch_ind_val = np.random.choice(Nval, num_val, replace=False)
+            sample_replacement = config["batch_size"] > Nval
+            batch_ind_val = np.random.choice(Nval, config["batch_size"], replace=sample_replacement)
 
             result = sess.run([model.loss, model.loss_seq, model.loss_lat_batch, model.merged],
                               feed_dict={model.input_placeholder: X_val[batch_ind_val], model.keep_prob: 1.0})
